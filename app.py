@@ -22,7 +22,7 @@ logo_path = Path("assets/og_logo.png")
 
 brand_colors = ["#3B2416", "#6B4423", "#A47551", "#C8A27A", "#E8D5BD"]
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 # ---------------- STYLE ----------------
