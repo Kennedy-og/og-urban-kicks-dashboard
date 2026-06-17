@@ -6,31 +6,15 @@ from pathlib import Path
 import tempfile
 import socket
 
-config = st.secrets["mysql"]
-
-st.sidebar.markdown("### Database Debug")
-st.sidebar.write("Host:", config["host"])
-st.sidebar.write("Port:", config["port"])
-
-st.sidebar.markdown("### Database Debug")
-st.sidebar.write("Host:", config["host"])
-st.sidebar.write("Port:", config["port"])
-
 try:
-    resolved_ip = socket.gethostbyname(config["host"])
-    st.sidebar.success(f"DNS OK: {resolved_ip}")
+    test_conn = get_connection()
+    test_conn.close()
+    st.sidebar.success("MySQL login OK")
+except mysql.connector.Error as e:
+    st.sidebar.error(f"MySQL failed: errno={e.errno}, sqlstate={e.sqlstate}")
+    st.sidebar.error(f"Message: {e.msg}")
 except Exception as e:
-    st.sidebar.error(f"DNS failed: {e}")
-
-try:
-    test_socket = socket.create_connection(
-        (config["host"], int(config["port"])),
-        timeout=10
-    )
-    test_socket.close()
-    st.sidebar.success("TCP port OK")
-except Exception as e:
-    st.sidebar.error(f"TCP port failed: {e}")
+    st.sidebar.error(f"General error: {type(e).__name__}: {e}")
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
