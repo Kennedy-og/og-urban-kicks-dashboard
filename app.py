@@ -4,8 +4,9 @@ import plotly.express as px
 import mysql.connector
 from pathlib import Path
 import tempfile
-
 import socket
+
+config = st.secrets["mysql"]
 
 st.sidebar.markdown("### Database Debug")
 st.sidebar.write("Host:", config["host"])
@@ -16,7 +17,6 @@ try:
     st.sidebar.success(f"DNS OK: {resolved_ip}")
 except Exception as e:
     st.sidebar.error(f"DNS failed: {e}")
-    config = st.secrets["mysql"]
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
