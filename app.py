@@ -6,6 +6,16 @@ from pathlib import Path
 import tempfile
 import socket
 
+config = st.secrets["mysql"]
+
+st.sidebar.markdown("### Database Debug")
+st.sidebar.write("Host:", config["host"])
+st.sidebar.write("Port:", config["port"])
+
+st.sidebar.markdown("### Database Debug")
+st.sidebar.write("Host:", config["host"])
+st.sidebar.write("Port:", config["port"])
+
 try:
     test_conn = get_connection()
     test_conn.close()
@@ -15,6 +25,7 @@ except mysql.connector.Error as e:
     st.sidebar.error(f"Message: {e.msg}")
 except Exception as e:
     st.sidebar.error(f"General error: {type(e).__name__}: {e}")
+    
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
