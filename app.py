@@ -6,70 +6,49 @@ from pathlib import Path
 import tempfile
 import socket
 
-config = st.secrets["mysql"]
 
-st.sidebar.markdown("### Database Debug")
-st.sidebar.write("Host:", config["host"])
-st.sidebar.write("Port:", config["port"])
-
-st.sidebar.markdown("### Database Debug")
-st.sidebar.write("Host:", config["host"])
-st.sidebar.write("Port:", config["port"])
-
-try:
-    test_conn = get_connection()
-    test_conn.close()
-    st.sidebar.success("MySQL login OK")
-except mysql.connector.Error as e:
-    st.sidebar.error(f"MySQL failed: errno={e.errno}, sqlstate={e.sqlstate}")
-    st.sidebar.error(f"Message: {e.msg}")
-except Exception as e:
-    st.sidebar.error(f"General error: {type(e).__name__}: {e}")
-    
+# ---------------- PAGE CONFIG ----------------
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
     layout="wide"
 )
 
+
+# ---------------- CONFIG ----------------
+
 config = st.secrets["mysql"]
 logo_path = Path("assets/og_logo.png")
 
 brand_colors = ["#3B2416", "#6B4423", "#A47551", "#C8A27A", "#E8D5BD"]
 
+DEBUG_MODE = True
+
+
+# ---------------- STYLE ----------------
 
 def apply_brand_style():
     st.markdown(
         """
         <style>
-        /*
-        This style keeps OG Urban Kicks brown/cream branding,
-        but does NOT force the main Streamlit background.
-        So Streamlit Light/Dark mode can work naturally.
-        */
-
         .block-container {
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
 
-        /* Sidebar blends with Streamlit theme */
         section[data-testid="stSidebar"] {
             border-right: 1px solid rgba(164, 117, 81, 0.35);
         }
 
-        /* Headings inherit Streamlit light/dark text color */
         h1, h2, h3, h4 {
             color: inherit !important;
             font-weight: 700 !important;
         }
 
-        /* Captions */
         .stCaption, caption {
             opacity: 0.75;
         }
 
-        /* Metric cards with brown boutique details */
         div[data-testid="stMetric"] {
             background: rgba(164, 117, 81, 0.08);
             border: 1px solid rgba(164, 117, 81, 0.45);
@@ -88,7 +67,6 @@ def apply_brand_style():
             font-weight: 700 !important;
         }
 
-        /* Inputs keep brown borders but preserve Streamlit theme background */
         input, textarea {
             border-color: rgba(164, 117, 81, 0.55) !important;
         }
@@ -101,7 +79,6 @@ def apply_brand_style():
             border-color: rgba(164, 117, 81, 0.55) !important;
         }
 
-        /* Buttons stay branded */
         .stButton > button,
         button[kind="primary"],
         div[data-testid="stFormSubmitButton"] button {
@@ -118,7 +95,6 @@ def apply_brand_style():
             color: #FFF8EF !important;
         }
 
-        /* Dataframes */
         div[data-testid="stDataFrame"] {
             border: 1px solid rgba(164, 117, 81, 0.45);
             border-radius: 14px;
@@ -126,7 +102,6 @@ def apply_brand_style():
             box-shadow: 0 8px 20px rgba(59, 36, 22, 0.06);
         }
 
-        /* Plotly chart container */
         .js-plotly-plot {
             border-radius: 14px;
             overflow: hidden;
@@ -134,7 +109,6 @@ def apply_brand_style():
             box-shadow: 0 8px 20px rgba(59, 36, 22, 0.06);
         }
 
-        /* Divider */
         hr {
             border-color: rgba(164, 117, 81, 0.35);
         }
@@ -147,14 +121,33 @@ def apply_brand_style():
 apply_brand_style()
 
 
+# ---------------- DATABASE CONNECTION ----------------
+
+def get_ssl_ca_path():
+    ssl_ca_value = str(config.get("ssl_ca", "")).strip()
+
+    if "BEGIN CERTIFICATE" in ssl_ca_value:
+        temp_file = tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".pem",
+            mode="w"
+        )
+        temp_file.write(ssl_ca_value)
+        temp_file.close()
+        return temp_file.name
+
+    return ssl_ca_value
+
+
 def get_connection():
     return mysql.connector.connect(
         host=config["host"],
-        port=config["port"],
+        port=int(config["port"]),
         user=config["user"],
         password=config["password"],
         database=config["database"],
-        ssl_ca=config["ssl_ca"]
+        ssl_ca=get_ssl_ca_path(),
+        connection_timeout=10
     )
 
 
@@ -237,6 +230,8 @@ def add_product_with_inventory(
     st.cache_data.clear()
 
 
+# ---------------- DATA FUNCTIONS ----------------
+
 def get_sales_data(start_date, end_date):
     query = """
     SELECT 
@@ -255,7 +250,11 @@ def get_sales_data(start_date, end_date):
     """
 
     df = load_data(query, (start_date, end_date))
-    df["sale_date"] = pd.to_datetime(df["sale_date"])
+
+    if not df.empty:
+        df["sale_date"] = pd.to_datetime(df["sale_date"])
+        df["profit"] = df["profit"].fillna(0)
+
     return df
 
 
@@ -283,7 +282,10 @@ def get_inventory_data():
     """
 
     df = load_data(query)
-    df["expiry_date"] = pd.to_datetime(df["expiry_date"])
+
+    if not df.empty:
+        df["expiry_date"] = pd.to_datetime(df["expiry_date"])
+
     return df
 
 
@@ -301,7 +303,14 @@ def get_product_sales_data():
     ORDER BY total_sales DESC;
     """
 
-    return load_data(query)
+    df = load_data(query)
+
+    if not df.empty:
+        df["quantity_sold"] = df["quantity_sold"].fillna(0)
+        df["total_sales"] = df["total_sales"].fillna(0)
+        df["total_profit"] = df["total_profit"].fillna(0)
+
+    return df
 
 
 def get_expenses_data():
@@ -316,7 +325,10 @@ def get_expenses_data():
     """
 
     df = load_data(query)
-    df["expense_date"] = pd.to_datetime(df["expense_date"])
+
+    if not df.empty:
+        df["expense_date"] = pd.to_datetime(df["expense_date"])
+
     return df
 
 
@@ -355,6 +367,9 @@ def get_categories():
 
 
 def calculate_sales_kpis(sales_df):
+    if sales_df.empty:
+        return 0, 0, 0, 0, 0
+
     total_sales = sales_df["total_amount"].sum()
     total_profit = sales_df["profit"].sum()
     total_orders = sales_df["sale_id"].nunique()
@@ -414,6 +429,42 @@ else:
 st.sidebar.title("OG Urban Kicks")
 st.sidebar.caption("Footwear • Apparel • Accessories")
 
+
+# ---------------- TEMPORARY DATABASE DEBUG ----------------
+
+if DEBUG_MODE:
+    st.sidebar.divider()
+    st.sidebar.markdown("### Database Debug")
+    st.sidebar.write("Host:", config["host"])
+    st.sidebar.write("Port:", config["port"])
+
+    try:
+        resolved_ip = socket.gethostbyname(config["host"])
+        st.sidebar.success(f"DNS OK: {resolved_ip}")
+    except Exception as e:
+        st.sidebar.error(f"DNS failed: {e}")
+
+    try:
+        test_socket = socket.create_connection(
+            (config["host"], int(config["port"])),
+            timeout=10
+        )
+        test_socket.close()
+        st.sidebar.success("TCP port OK")
+    except Exception as e:
+        st.sidebar.error(f"TCP port failed: {e}")
+
+    try:
+        test_conn = get_connection()
+        test_conn.close()
+        st.sidebar.success("MySQL login OK")
+    except mysql.connector.Error as e:
+        st.sidebar.error(f"MySQL failed: errno={e.errno}, sqlstate={e.sqlstate}")
+        st.sidebar.error(f"Message: {e.msg}")
+    except Exception as e:
+        st.sidebar.error(f"General error: {type(e).__name__}: {e}")
+
+
 page = st.sidebar.radio(
     "Go to",
     ["Overview", "Sales", "Inventory", "Products", "Expenses", "Admin Actions"]
@@ -421,27 +472,48 @@ page = st.sidebar.radio(
 
 st.sidebar.divider()
 
-date_range_df = get_date_range()
 
-min_date = pd.to_datetime(date_range_df.loc[0, "min_date"]).date()
-max_date = pd.to_datetime(date_range_df.loc[0, "max_date"]).date()
+# ---------------- FILTERS ----------------
 
-selected_date_range = st.sidebar.date_input(
-    "Date range",
-    value=(min_date, max_date),
-    min_value=min_date,
-    max_value=max_date
-)
+try:
+    date_range_df = get_date_range()
 
-if isinstance(selected_date_range, tuple) and len(selected_date_range) == 2:
-    start_date, end_date = selected_date_range
-else:
-    start_date, end_date = min_date, max_date
+    if (
+        date_range_df.empty
+        or pd.isna(date_range_df.loc[0, "min_date"])
+        or pd.isna(date_range_df.loc[0, "max_date"])
+    ):
+        st.error("No sales date found in the database. Please run db_setup.py first.")
+        st.stop()
 
-categories_df = get_categories()
-category_options = ["All"] + categories_df["category"].dropna().tolist()
+    min_date = pd.to_datetime(date_range_df.loc[0, "min_date"]).date()
+    max_date = pd.to_datetime(date_range_df.loc[0, "max_date"]).date()
 
-selected_category = st.sidebar.selectbox("Category", category_options)
+    selected_date_range = st.sidebar.date_input(
+        "Date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    if isinstance(selected_date_range, tuple) and len(selected_date_range) == 2:
+        start_date, end_date = selected_date_range
+    else:
+        start_date, end_date = min_date, max_date
+
+    categories_df = get_categories()
+
+    if categories_df.empty:
+        category_options = ["All"]
+    else:
+        category_options = ["All"] + categories_df["category"].dropna().tolist()
+
+    selected_category = st.sidebar.selectbox("Category", category_options)
+
+except Exception as e:
+    st.error("Database connection failed.")
+    st.exception(e)
+    st.stop()
 
 
 # ---------------- OVERVIEW PAGE ----------------
@@ -458,10 +530,10 @@ if page == "Overview":
 
     total_sales, total_profit, total_orders, profit_margin, average_order_value = calculate_sales_kpis(sales_df)
 
-    total_products = inventory_df["product_id"].nunique()
-    low_stock_items = inventory_df[inventory_df["stock_status"] == "Low Stock"].shape[0]
-    out_of_stock_items = inventory_df[inventory_df["stock_status"] == "Out of Stock"].shape[0]
-    stock_value = (inventory_df["stock_quantity"] * inventory_df["cost_price"]).sum()
+    total_products = inventory_df["product_id"].nunique() if not inventory_df.empty else 0
+    low_stock_items = inventory_df[inventory_df["stock_status"] == "Low Stock"].shape[0] if not inventory_df.empty else 0
+    out_of_stock_items = inventory_df[inventory_df["stock_status"] == "Out of Stock"].shape[0] if not inventory_df.empty else 0
+    stock_value = (inventory_df["stock_quantity"] * inventory_df["cost_price"]).sum() if not inventory_df.empty else 0
 
     st.subheader("Overview")
 
@@ -484,71 +556,86 @@ if page == "Overview":
     chart_col1, chart_col2 = st.columns(2)
 
     with chart_col1:
-        sales_trend = sales_df.groupby("sale_date", as_index=False)["total_amount"].sum()
+        if not sales_df.empty:
+            sales_trend = sales_df.groupby("sale_date", as_index=False)["total_amount"].sum()
 
-        fig = px.line(
-            sales_trend,
-            x="sale_date",
-            y="total_amount",
-            markers=True,
-            title="Sales Trend",
-            color_discrete_sequence=["#6B4423"]
-        )
+            fig = px.line(
+                sales_trend,
+                x="sale_date",
+                y="total_amount",
+                markers=True,
+                title="Sales Trend",
+                color_discrete_sequence=["#6B4423"]
+            )
 
-        fig = style_chart(fig)
-        st.plotly_chart(fig, use_container_width=True)
+            fig = style_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No sales data available for this date range.")
 
     with chart_col2:
-        category_sales = product_sales_df.groupby("category", as_index=False)["total_sales"].sum()
+        if not product_sales_df.empty:
+            category_sales = product_sales_df.groupby("category", as_index=False)["total_sales"].sum()
 
-        fig = px.bar(
-            category_sales,
-            x="category",
-            y="total_sales",
-            title="Sales by Category",
-            color_discrete_sequence=["#A47551"]
-        )
+            fig = px.bar(
+                category_sales,
+                x="category",
+                y="total_sales",
+                title="Sales by Category",
+                color_discrete_sequence=["#A47551"]
+            )
 
-        fig = style_chart(fig)
-        st.plotly_chart(fig, use_container_width=True)
+            fig = style_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No category sales data available.")
 
     chart_col3, chart_col4 = st.columns(2)
 
     with chart_col3:
-        payment_data = sales_df.groupby("payment_method", as_index=False)["total_amount"].sum()
+        if not sales_df.empty:
+            payment_data = sales_df.groupby("payment_method", as_index=False)["total_amount"].sum()
 
-        fig = px.pie(
-            payment_data,
-            names="payment_method",
-            values="total_amount",
-            title="Payment Method Breakdown",
-            color_discrete_sequence=brand_colors
-        )
+            fig = px.pie(
+                payment_data,
+                names="payment_method",
+                values="total_amount",
+                title="Payment Method Breakdown",
+                color_discrete_sequence=brand_colors
+            )
 
-        fig = style_chart(fig)
-        st.plotly_chart(fig, use_container_width=True)
+            fig = style_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No payment data available.")
 
     with chart_col4:
-        stock_status = inventory_df["stock_status"].value_counts().reset_index()
-        stock_status.columns = ["stock_status", "count"]
+        if not inventory_df.empty:
+            stock_status = inventory_df["stock_status"].value_counts().reset_index()
+            stock_status.columns = ["stock_status", "count"]
 
-        fig = px.pie(
-            stock_status,
-            names="stock_status",
-            values="count",
-            title="Inventory Status",
-            color_discrete_sequence=brand_colors
-        )
+            fig = px.pie(
+                stock_status,
+                names="stock_status",
+                values="count",
+                title="Inventory Status",
+                color_discrete_sequence=brand_colors
+            )
 
-        fig = style_chart(fig)
-        st.plotly_chart(fig, use_container_width=True)
+            fig = style_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No inventory data available.")
 
     st.subheader("Low Stock and Out of Stock Items")
 
-    st.dataframe(
-        inventory_df[inventory_df["stock_status"].isin(["Low Stock", "Out of Stock"])],
-        use_container_width=True
-    )
+    if not inventory_df.empty:
+        st.dataframe(
+            inventory_df[inventory_df["stock_status"].isin(["Low Stock", "Out of Stock"])],
+            use_container_width=True
+        )
+    else:
+        st.info("No inventory records found.")
 
 
 # ---------------- SALES PAGE ----------------
@@ -569,22 +656,24 @@ elif page == "Sales":
 
     st.divider()
 
-    staff_sales = sales_df.groupby("staff_name", as_index=False)["total_amount"].sum()
+    if not sales_df.empty:
+        staff_sales = sales_df.groupby("staff_name", as_index=False)["total_amount"].sum()
 
-    fig = px.bar(
-        staff_sales,
-        x="staff_name",
-        y="total_amount",
-        title="Sales by Staff",
-        color_discrete_sequence=["#6B4423"]
-    )
+        fig = px.bar(
+            staff_sales,
+            x="staff_name",
+            y="total_amount",
+            title="Sales by Staff",
+            color_discrete_sequence=["#6B4423"]
+        )
 
-    fig = style_chart(fig)
-    st.plotly_chart(fig, use_container_width=True)
+        fig = style_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Sales Records")
-
-    st.dataframe(sales_df, use_container_width=True)
+        st.subheader("Sales Records")
+        st.dataframe(sales_df, use_container_width=True)
+    else:
+        st.info("No sales data available for this date range.")
 
 
 # ---------------- INVENTORY PAGE ----------------
@@ -593,9 +682,9 @@ elif page == "Inventory":
     with st.spinner("Loading inventory data..."):
         inventory_df = get_inventory_data()
 
-    total_products = inventory_df["product_id"].nunique()
-    low_stock_items = inventory_df[inventory_df["stock_status"] == "Low Stock"].shape[0]
-    out_of_stock_items = inventory_df[inventory_df["stock_status"] == "Out of Stock"].shape[0]
+    total_products = inventory_df["product_id"].nunique() if not inventory_df.empty else 0
+    low_stock_items = inventory_df[inventory_df["stock_status"] == "Low Stock"].shape[0] if not inventory_df.empty else 0
+    out_of_stock_items = inventory_df[inventory_df["stock_status"] == "Out of Stock"].shape[0] if not inventory_df.empty else 0
 
     st.subheader("Inventory Management")
 
@@ -607,33 +696,35 @@ elif page == "Inventory":
 
     st.divider()
 
-    status_filter = st.selectbox(
-        "Filter by stock status",
-        ["All", "In Stock", "Low Stock", "Out of Stock"]
-    )
+    if not inventory_df.empty:
+        status_filter = st.selectbox(
+            "Filter by stock status",
+            ["All", "In Stock", "Low Stock", "Out of Stock"]
+        )
 
-    inventory_view = inventory_df.copy()
+        inventory_view = inventory_df.copy()
 
-    if status_filter != "All":
-        inventory_view = inventory_view[inventory_view["stock_status"] == status_filter]
+        if status_filter != "All":
+            inventory_view = inventory_view[inventory_view["stock_status"] == status_filter]
 
-    stock_status = inventory_df["stock_status"].value_counts().reset_index()
-    stock_status.columns = ["stock_status", "count"]
+        stock_status = inventory_df["stock_status"].value_counts().reset_index()
+        stock_status.columns = ["stock_status", "count"]
 
-    fig = px.bar(
-        stock_status,
-        x="stock_status",
-        y="count",
-        title="Inventory Status Count",
-        color_discrete_sequence=["#A47551"]
-    )
+        fig = px.bar(
+            stock_status,
+            x="stock_status",
+            y="count",
+            title="Inventory Status Count",
+            color_discrete_sequence=["#A47551"]
+        )
 
-    fig = style_chart(fig)
-    st.plotly_chart(fig, use_container_width=True)
+        fig = style_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Inventory Table")
-
-    st.dataframe(inventory_view, use_container_width=True)
+        st.subheader("Inventory Table")
+        st.dataframe(inventory_view, use_container_width=True)
+    else:
+        st.info("No inventory records found.")
 
 
 # ---------------- PRODUCTS PAGE ----------------
@@ -647,35 +738,37 @@ elif page == "Products":
 
     st.subheader("Product Performance")
 
-    top_products = product_sales_df.sort_values("total_sales", ascending=False).head(10)
+    if not product_sales_df.empty:
+        top_products = product_sales_df.sort_values("total_sales", ascending=False).head(10)
 
-    fig = px.bar(
-        top_products,
-        x="total_sales",
-        y="product_name",
-        orientation="h",
-        title="Top Products by Sales",
-        color_discrete_sequence=["#6B4423"]
-    )
+        fig = px.bar(
+            top_products,
+            x="total_sales",
+            y="product_name",
+            orientation="h",
+            title="Top Products by Sales",
+            color_discrete_sequence=["#6B4423"]
+        )
 
-    fig = style_chart(fig)
-    st.plotly_chart(fig, use_container_width=True)
+        fig = style_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-    fig = px.bar(
-        top_products,
-        x="total_profit",
-        y="product_name",
-        orientation="h",
-        title="Top Products by Profit",
-        color_discrete_sequence=["#A47551"]
-    )
+        fig = px.bar(
+            top_products,
+            x="total_profit",
+            y="product_name",
+            orientation="h",
+            title="Top Products by Profit",
+            color_discrete_sequence=["#A47551"]
+        )
 
-    fig = style_chart(fig)
-    st.plotly_chart(fig, use_container_width=True)
+        fig = style_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Product Sales Table")
-
-    st.dataframe(product_sales_df, use_container_width=True)
+        st.subheader("Product Sales Table")
+        st.dataframe(product_sales_df, use_container_width=True)
+    else:
+        st.info("No product sales data available.")
 
 
 # ---------------- EXPENSES PAGE ----------------
@@ -687,7 +780,7 @@ elif page == "Expenses":
 
     total_sales, total_profit, total_orders, profit_margin, average_order_value = calculate_sales_kpis(sales_df)
 
-    total_expenses = expenses_df["amount"].sum()
+    total_expenses = expenses_df["amount"].sum() if not expenses_df.empty else 0
     expense_ratio = (total_expenses / total_sales * 100) if total_sales > 0 else 0
 
     st.subheader("Expenses")
@@ -699,22 +792,24 @@ elif page == "Expenses":
 
     st.divider()
 
-    expense_by_type = expenses_df.groupby("expense_type", as_index=False)["amount"].sum()
+    if not expenses_df.empty:
+        expense_by_type = expenses_df.groupby("expense_type", as_index=False)["amount"].sum()
 
-    fig = px.bar(
-        expense_by_type,
-        x="expense_type",
-        y="amount",
-        title="Expenses by Type",
-        color_discrete_sequence=["#6B4423"]
-    )
+        fig = px.bar(
+            expense_by_type,
+            x="expense_type",
+            y="amount",
+            title="Expenses by Type",
+            color_discrete_sequence=["#6B4423"]
+        )
 
-    fig = style_chart(fig)
-    st.plotly_chart(fig, use_container_width=True)
+        fig = style_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Expense Records")
-
-    st.dataframe(expenses_df, use_container_width=True)
+        st.subheader("Expense Records")
+        st.dataframe(expenses_df, use_container_width=True)
+    else:
+        st.info("No expense records found.")
 
 
 # ---------------- ADMIN ACTIONS PAGE ----------------
@@ -778,126 +873,132 @@ elif page == "Admin Actions":
 
         inventory_df = get_inventory_data()
 
-        product_options = inventory_df[["product_id", "product_name", "stock_quantity"]].copy()
+        if inventory_df.empty:
+            st.info("No products found in inventory.")
+        else:
+            product_options = inventory_df[["product_id", "product_name", "stock_quantity"]].copy()
 
-        product_options["display"] = (
-            product_options["product_name"] +
-            " | Current Stock: " +
-            product_options["stock_quantity"].astype(str)
-        )
-
-        selected_product = st.selectbox(
-            "Select Product",
-            product_options["display"]
-        )
-
-        selected_row = product_options[product_options["display"] == selected_product].iloc[0]
-        product_id = int(selected_row["product_id"])
-        current_stock = int(selected_row["stock_quantity"])
-
-        with st.form("update_stock_form"):
-            new_quantity = st.number_input(
-                "New Stock Quantity",
-                min_value=0,
-                value=current_stock,
-                step=1
+            product_options["display"] = (
+                product_options["product_name"] +
+                " | Current Stock: " +
+                product_options["stock_quantity"].astype(str)
             )
 
-            submitted = st.form_submit_button("Update Stock")
+            selected_product = st.selectbox(
+                "Select Product",
+                product_options["display"]
+            )
 
-            if submitted:
-                query = """
-                UPDATE inventory
-                SET stock_quantity = %s, last_updated = CURDATE()
-                WHERE product_id = %s;
-                """
+            selected_row = product_options[product_options["display"] == selected_product].iloc[0]
+            product_id = int(selected_row["product_id"])
+            current_stock = int(selected_row["stock_quantity"])
 
-                values = (
-                    new_quantity,
-                    product_id
+            with st.form("update_stock_form"):
+                new_quantity = st.number_input(
+                    "New Stock Quantity",
+                    min_value=0,
+                    value=current_stock,
+                    step=1
                 )
 
-                execute_query(query, values)
-                st.success("Stock quantity updated successfully.")
-                st.rerun()
+                submitted = st.form_submit_button("Update Stock")
+
+                if submitted:
+                    query = """
+                    UPDATE inventory
+                    SET stock_quantity = %s, last_updated = CURDATE()
+                    WHERE product_id = %s;
+                    """
+
+                    values = (
+                        new_quantity,
+                        product_id
+                    )
+
+                    execute_query(query, values)
+                    st.success("Stock quantity updated successfully.")
+                    st.rerun()
 
     elif action == "Add New Product":
         st.markdown("### Add New Product")
 
         suppliers_df = get_suppliers_data()
 
-        suppliers_df["display"] = (
-            suppliers_df["supplier_id"].astype(str) +
-            " - " +
-            suppliers_df["supplier_name"]
-        )
-
-        with st.form("add_product_form"):
-            product_name = st.text_input(
-                "Product Name",
-                placeholder="e.g. Italian Leather Loafers"
+        if suppliers_df.empty:
+            st.warning("No supplier found. Add suppliers in the database first.")
+        else:
+            suppliers_df["display"] = (
+                suppliers_df["supplier_id"].astype(str) +
+                " - " +
+                suppliers_df["supplier_name"]
             )
 
-            category = st.text_input(
-                "Category",
-                placeholder="e.g. Sneakers, Loafers, Slides, Belts, Caps"
-            )
+            with st.form("add_product_form"):
+                product_name = st.text_input(
+                    "Product Name",
+                    placeholder="e.g. Italian Leather Loafers"
+                )
 
-            selected_supplier = st.selectbox(
-                "Supplier",
-                suppliers_df["display"]
-            )
+                category = st.text_input(
+                    "Category",
+                    placeholder="e.g. Sneakers, Loafers, Slides, Belts, Caps"
+                )
 
-            cost_price = st.number_input(
-                "Cost Price",
-                min_value=0.0,
-                step=100.0
-            )
+                selected_supplier = st.selectbox(
+                    "Supplier",
+                    suppliers_df["display"]
+                )
 
-            selling_price = st.number_input(
-                "Selling Price",
-                min_value=0.0,
-                step=100.0
-            )
+                cost_price = st.number_input(
+                    "Cost Price",
+                    min_value=0.0,
+                    step=100.0
+                )
 
-            expiry_date = st.date_input("Expiry Date")
+                selling_price = st.number_input(
+                    "Selling Price",
+                    min_value=0.0,
+                    step=100.0
+                )
 
-            stock_quantity = st.number_input(
-                "Opening Stock Quantity",
-                min_value=0,
-                step=1
-            )
+                expiry_date = st.date_input("Expiry Date")
 
-            reorder_level = st.number_input(
-                "Reorder Level",
-                min_value=0,
-                step=1
-            )
+                stock_quantity = st.number_input(
+                    "Opening Stock Quantity",
+                    min_value=0,
+                    step=1
+                )
 
-            submitted = st.form_submit_button("Add Product")
+                reorder_level = st.number_input(
+                    "Reorder Level",
+                    min_value=0,
+                    step=1
+                )
 
-            if submitted:
-                if product_name.strip() == "":
-                    st.error("Product name is required.")
-                elif category.strip() == "":
-                    st.error("Category is required.")
-                elif cost_price <= 0:
-                    st.error("Cost price must be greater than zero.")
-                elif selling_price <= cost_price:
-                    st.error("Selling price should be greater than cost price.")
-                else:
-                    supplier_id = int(selected_supplier.split(" - ")[0])
+                submitted = st.form_submit_button("Add Product")
 
-                    add_product_with_inventory(
-                        product_name,
-                        category,
-                        supplier_id,
-                        cost_price,
-                        selling_price,
-                        expiry_date,
-                        stock_quantity,
-                        reorder_level
-                    )
+                if submitted:
+                    if product_name.strip() == "":
+                        st.error("Product name is required.")
+                    elif category.strip() == "":
+                        st.error("Category is required.")
+                    elif cost_price <= 0:
+                        st.error("Cost price must be greater than zero.")
+                    elif selling_price <= cost_price:
+                        st.error("Selling price should be greater than cost price.")
+                    else:
+                        supplier_id = int(selected_supplier.split(" - ")[0])
 
-                    st.success("New product added successfully.")
-                    st.rerun()
+                        add_product_with_inventory(
+                            product_name,
+                            category,
+                            supplier_id,
+                            cost_price,
+                            selling_price,
+                            expiry_date,
+                            stock_quantity,
+                            reorder_level
+                        )
+
+                        st.success("New product added successfully.")
+                        st.rerun()
