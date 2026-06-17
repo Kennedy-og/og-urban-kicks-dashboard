@@ -1,0 +1,25 @@
+import tempfile
+import os
+
+
+def get_ssl_ca_path():
+    ssl_ca_value = config.get("ssl_ca", "")
+
+    if "BEGIN CERTIFICATE" in ssl_ca_value:
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pem", mode="w")
+        temp_file.write(ssl_ca_value)
+        temp_file.close()
+        return temp_file.name
+
+    return ssl_ca_value
+
+
+def get_connection():
+    return mysql.connector.connect(
+        host=config["host"],
+        port=config["port"],
+        user=config["user"],
+        password=config["password"],
+        database=config["database"],
+        ssl_ca=get_ssl_ca_path()
+    )
