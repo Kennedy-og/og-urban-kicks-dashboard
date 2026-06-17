@@ -4,7 +4,6 @@ import plotly.express as px
 import mysql.connector
 from pathlib import Path
 import tempfile
-import os
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
