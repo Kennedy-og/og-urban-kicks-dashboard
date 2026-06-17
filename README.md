@@ -29,7 +29,7 @@ The dashboard helps business owners and managers track sales, inventory, product
 
 ---
 
-## Project Overview
+## [Project Overview](#table-of-contents)
 
 **OG Urban Kicks Admin Dashboard** is a business intelligence and admin management dashboard designed for a fashion retail business.
 
@@ -52,7 +52,7 @@ This project was built as a professional portfolio project to demonstrate databa
 
 ---
 
-## Live Demo
+## [Live Demo](#table-of-contents)
 
 **Live Dashboard:** Add your Streamlit Cloud link here
 **GitHub Repository:** Add your GitHub repository link here
@@ -66,7 +66,7 @@ GitHub Repository: https://github.com/Kennedy-og/og-urban-kicks-dashboard
 
 ---
 
-## Screenshots
+## [Screenshots](#table-of-contents)
 
 Add screenshots of your dashboard here.
 
@@ -80,7 +80,7 @@ Example:
 
 ---
 
-## Key Features
+## [Key Features](#table-of-contents)
 
 ### Business KPIs
 
@@ -98,8 +98,6 @@ The dashboard displays major business performance indicators including:
 * Total expenses
 * Expense ratio
 
----
-
 ### Sales Analysis
 
 The sales page allows users to analyze store sales performance.
@@ -111,8 +109,6 @@ Features include:
 * Sales records table
 * Date range filtering
 * Sales performance chart
-
----
 
 ### Inventory Management
 
@@ -127,8 +123,6 @@ Features include:
 * Inventory status chart
 * Full inventory table
 
----
-
 ### Product Performance
 
 The product page shows how each product is performing.
@@ -140,8 +134,6 @@ Features include:
 * Product sales table
 * Category filter
 
----
-
 ### Expense Tracking
 
 The expenses page helps track business costs.
@@ -152,8 +144,6 @@ Features include:
 * Expense ratio
 * Expenses by type
 * Expense records table
-
----
 
 ### Admin Actions
 
@@ -167,7 +157,7 @@ Current admin actions include:
 
 ---
 
-## Dashboard Pages
+## [Dashboard Pages](#table-of-contents)
 
 The dashboard contains six main pages:
 
@@ -182,7 +172,7 @@ The dashboard contains six main pages:
 
 ---
 
-## Tech Stack
+## [Tech Stack](#table-of-contents)
 
 | Technology             | Purpose                               |
 | ---------------------- | ------------------------------------- |
@@ -199,7 +189,7 @@ The dashboard contains six main pages:
 
 ---
 
-## Project Architecture
+## [Project Architecture](#table-of-contents)
 
 ```text
 Aiven MySQL Database
@@ -219,7 +209,7 @@ The dashboard connects securely to the cloud database, runs SQL queries, process
 
 ---
 
-## Database Structure
+## [Database Structure](#table-of-contents)
 
 The project uses the following database tables:
 
@@ -235,7 +225,7 @@ The project uses the following database tables:
 
 ---
 
-## Project Folder Structure
+## [Project Folder Structure](#table-of-contents)
 
 ```text
 og-urban-kicks-dashboard/
@@ -258,7 +248,7 @@ og-urban-kicks-dashboard/
 
 ---
 
-## Local Setup
+## [Local Setup](#table-of-contents)
 
 Follow the steps below to run the project locally.
 
@@ -272,8 +262,6 @@ git clone https://github.com/Kennedy-og/og-urban-kicks-dashboard.git
 cd og-urban-kicks-dashboard
 ```
 
----
-
 ### 2. Create a Virtual Environment
 
 ```bash
@@ -286,15 +274,11 @@ Activate the virtual environment on Windows:
 venv\Scripts\activate
 ```
 
----
-
 ### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
-
----
 
 ### 4. Create Streamlit Secrets
 
@@ -322,8 +306,6 @@ database = "defaultdb"
 ssl_ca = "ca.pem"
 ```
 
----
-
 ### 5. Add Aiven SSL Certificate Locally
 
 Download the Aiven CA certificate and save it in the project root folder as:
@@ -344,8 +326,6 @@ og-urban-kicks-dashboard/
     └── secrets.toml
 ```
 
----
-
 ### 6. Test Database Connection
 
 Run:
@@ -355,8 +335,6 @@ python test_connection.py
 ```
 
 If the connection is successful, you should see a message showing that Python connected to MySQL.
-
----
 
 ### 7. Run Database Setup
 
@@ -368,8 +346,6 @@ python db_setup.py
 
 This creates the database tables and inserts sample OG Urban Kicks data.
 
----
-
 ### 8. Run the Streamlit App
 
 ```bash
@@ -380,7 +356,7 @@ The app will open in your browser.
 
 ---
 
-## Streamlit Cloud Deployment
+## [Streamlit Cloud Deployment](#table-of-contents)
 
 The project is deployed using **Streamlit Cloud**.
 
@@ -402,7 +378,7 @@ app.py
 
 ---
 
-## Environment Variables and Secrets
+## [Environment Variables and Secrets](#table-of-contents)
 
 For Streamlit Cloud, do not use:
 
@@ -435,7 +411,7 @@ The app is designed to support both:
 
 ---
 
-## Security Notes
+## [Security Notes](#table-of-contents)
 
 The following files must not be pushed to GitHub:
 
@@ -469,7 +445,7 @@ If a password is accidentally committed, reset the password immediately and remo
 
 ---
 
-## Business Value
+## [Business Value](#table-of-contents)
 
 This dashboard provides real business value for a retail fashion brand by helping the owner:
 
@@ -484,7 +460,7 @@ This dashboard provides real business value for a retail fashion brand by helpin
 
 ---
 
-## Skills Demonstrated
+## [Skills Demonstrated](#table-of-contents)
 
 This project demonstrates the following technical and business skills:
 
@@ -505,7 +481,7 @@ This project demonstrates the following technical and business skills:
 
 ---
 
-## Future Improvements
+## [Future Improvements](#table-of-contents)
 
 Possible future improvements include:
 
@@ -524,7 +500,7 @@ Possible future improvements include:
 
 ---
 
-## Project Status
+## [Project Status](#table-of-contents)
 
 The project is currently a working deployed prototype.
 
@@ -542,10 +518,8 @@ Current completed milestones:
 
 ---
 
-## Author
+## [Author](#table-of-contents)
 
 **Kennedy OG**
 
 Python Developer | Data Analytics | Business Intelligence | Dashboard Development
-
----
