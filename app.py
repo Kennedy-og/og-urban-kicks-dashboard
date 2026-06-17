@@ -12,13 +12,17 @@ st.sidebar.markdown("### Database Debug")
 st.sidebar.write("Host:", config["host"])
 st.sidebar.write("Port:", config["port"])
 
+st.sidebar.markdown("### Database Debug")
+st.sidebar.write("Host:", config["host"])
+st.sidebar.write("Port:", config["port"])
+
 try:
     resolved_ip = socket.gethostbyname(config["host"])
     st.sidebar.success(f"DNS OK: {resolved_ip}")
 except Exception as e:
     st.sidebar.error(f"DNS failed: {e}")
 
-    try:
+try:
     test_socket = socket.create_connection(
         (config["host"], int(config["port"])),
         timeout=10
@@ -27,7 +31,6 @@ except Exception as e:
     st.sidebar.success("TCP port OK")
 except Exception as e:
     st.sidebar.error(f"TCP port failed: {e}")
-
 
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
