@@ -18,6 +18,17 @@ try:
 except Exception as e:
     st.sidebar.error(f"DNS failed: {e}")
 
+    try:
+    test_socket = socket.create_connection(
+        (config["host"], int(config["port"])),
+        timeout=10
+    )
+    test_socket.close()
+    st.sidebar.success("TCP port OK")
+except Exception as e:
+    st.sidebar.error(f"TCP port failed: {e}")
+
+
 st.set_page_config(
     page_title="OG Urban Kicks Admin Dashboard",
     layout="wide"
