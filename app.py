@@ -1002,3 +1002,135 @@ elif page == "Admin Actions":
 
                         st.success("New product added successfully.")
                         st.rerun()
+    elif action == "Edit Product Details":
+        st.markdown("### Edit Product Details")
+
+        inventory_df = get_inventory_data()
+        suppliers_df = get_suppliers_data()
+
+        if inventory_df.empty:
+            st.info("No products found.")
+        elif suppliers_df.empty:
+            st.warning("No suppliers found. Add suppliers first.")
+        else:
+            product_options = inventory_df[
+                [
+                    "product_id",
+                    "product_name",
+                    "category",
+                    "supplier_name",
+                    "cost_price",
+                    "selling_price",
+                    "expiry_date"
+                ]
+            ].copy()
+
+            product_options["display"] = (
+                product_options["product_id"].astype(str)
+                + " - "
+                + product_options["product_name"]
+            )
+
+            selected_product = st.selectbox(
+                "Select Product to Edit",
+                product_options["display"]
+            )
+
+            selected_row = product_options[
+                product_options["display"] == selected_product
+            ].iloc[0]
+
+            product_id = int(selected_row["product_id"])
+
+            suppliers_df["display"] = (
+                suppliers_df["supplier_id"].astype(str)
+                + " - "
+                + suppliers_df["supplier_name"]
+            )
+
+            current_supplier_name = selected_row["supplier_name"]
+
+            matching_supplier = suppliers_df[
+                suppliers_df["supplier_name"] == current_supplier_name
+            ]
+
+            if not matching_supplier.empty:
+                current_supplier_display = matching_supplier["display"].iloc[0]
+                supplier_index = suppliers_df["display"].tolist().index(current_supplier_display)
+            else:
+                supplier_index = 0
+
+            with st.form("edit_product_form"):
+                product_name = st.text_input(
+                    "Product Name",
+                    value=selected_row["product_name"]
+                )
+
+                category = st.text_input(
+                    "Category",
+                    value=selected_row["category"]
+                )
+
+                selected_supplier = st.selectbox(
+                    "Supplier",
+                    suppliers_df["display"],
+                    index=supplier_index
+                )
+
+                cost_price = st.number_input(
+                    "Cost Price",
+                    min_value=0.0,
+                    value=float(selected_row["cost_price"]),
+                    step=100.0
+                )
+
+                selling_price = st.number_input(
+                    "Selling Price",
+                    min_value=0.0,
+                    value=float(selected_row["selling_price"]),
+                    step=100.0
+                )
+
+                expiry_date = st.date_input(
+                    "Expiry Date",
+                    value=pd.to_datetime(selected_row["expiry_date"]).date()
+                )
+
+                submitted = st.form_submit_button("Save Product Changes")
+
+                if submitted:
+                    if product_name.strip() == "":
+                        st.error("Product name is required.")
+                    elif category.strip() == "":
+                        st.error("Category is required.")
+                    elif cost_price <= 0:
+                        st.error("Cost price must be greater than zero.")
+                    elif selling_price <= cost_price:
+                        st.error("Selling price should be greater than cost price.")
+                    else:
+                        supplier_id = int(selected_supplier.split(" - ")[0])
+
+                        query = """
+                        UPDATE products
+                        SET product_name = %s,
+                            category = %s,
+                            supplier_id = %s,
+                            cost_price = %s,
+                            selling_price = %s,
+                            expiry_date = %s
+                        WHERE product_id = %s;
+                        """
+
+                        values = (
+                            product_name,
+                            category,
+                            supplier_id,
+                            cost_price,
+                            selling_price,
+                            expiry_date,
+                            product_id
+                        )
+
+                        execute_query(query, values)
+                        st.success("Product details updated successfully.")
+                        st.rerun()
